@@ -85,7 +85,15 @@
       <button id="tab-users-btn" class="px-3 py-2 rounded-md btn bg-indigo-50 text-indigo-700">Users</button>
       <button id="tab-mybus-btn" class="px-3 py-2 rounded-md btn hover:bg-indigo-50">My Business</button>
       <button id="tab-final-btn" class="px-3 py-2 rounded-md btn hover:bg-indigo-50">Approved</button>
+    
+      <!-- 🔍 Search Bar -->
+      <div class="relative ml-4">
+        <input id="search-input" type="text" placeholder="Search by email, owner ID, phone, or name"
+          class="px-3 py-2 pl-9 rounded-md bg-gray-50 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-72" />
+        <i data-feather="search" class="absolute left-2.5 top-2.5 text-gray-400 w-4 h-4"></i>
+      </div>
     </nav>
+    
 
     <!-- small nav (mobile) -->
     <div class="small-nav hidden"></div>
@@ -182,6 +190,27 @@
 <div id="modal-root"></div>
 
 <script type="module">
+  /* ---------------------------
+   Global Search Filter
+   --------------------------- */
+const searchInput = document.getElementById('search-input');
+
+searchInput.addEventListener('input', () => {
+  const term = searchInput.value.toLowerCase().trim();
+  const activeTab = document.querySelector('.tab-content:not(.hidden)');
+  if (!activeTab) return;
+
+  const cards = activeTab.querySelectorAll('.panel');
+  cards.forEach(card => {
+    const text = card.textContent.toLowerCase();
+    if (text.includes(term)) {
+      card.style.display = '';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+});
+
 feather.replace();
 
 /* ---------------------------

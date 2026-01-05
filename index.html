@@ -363,7 +363,37 @@ async function renderUsers() {
       const snap = await getDoc(doc(db, 'users', id));
       if (!snap.exists()) { alert('Not found'); return; }
       openDetailModal(snap.id, snap.data());
-    }));
+    }
+  
+  ));
+  // wire delete buttons
+usersCards.querySelectorAll('.delete-user').forEach(btn =>
+  btn.addEventListener('click', async e => {
+    const id = e.currentTarget.dataset.id;
+
+    if (!confirm('Delete this user permanently?')) return;
+
+    showPasswordConfirmModal(async (pw) => {
+      try {
+        const user = auth.currentUser;
+        if (!user) throw new Error('Not signed in');
+
+        const cred = EmailAuthProvider.credential(user.email, pw);
+        await reauthenticateWithCredential(user, cred);
+
+        // 🔥 delete user document
+        await deleteDoc(doc(db, 'users', id));
+
+        alert('User deleted successfully');
+        renderUsers();
+      } catch (err) {
+        console.error(err);
+        alert('Delete failed: ' + (err.message || err));
+      }
+    });
+  })
+);
+
   } catch (err) {
     usersCards.innerHTML = `<div class="panel p-4 text-red-500">Error loading users</div>`;
     console.error(err);
@@ -373,21 +403,37 @@ function userCardHtml(id, d){
   return `
     <div class="panel p-3">
       <div class="h-40 mb-3 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
-        ${d.imageUrl ? `<img src="${escapeHtml(d.imageUrl)}" class="card-img" onclick="window.open('${escapeHtml(d.imageUrl)}','_blank')" />` : `<div class="small-muted">No photo</div>`}
+        ${
+          d.imageUrl
+            ? `<img src="${escapeHtml(d.imageUrl)}" class="card-img" onclick="window.open('${escapeHtml(d.imageUrl)}','_blank')" />`
+            : `<div class="small-muted">No photo</div>`
+        }
       </div>
+
       <div class="mb-2">
         <div class="font-semibold">${escapeHtml(d.name||'—')}</div>
         <div class="small-muted text-sm">${escapeHtml(d.email||'—')}</div>
       </div>
+
       <div class="flex items-center justify-between">
         <div class="small-muted text-sm">Owner ID: ${escapeHtml(d.ownerId||id)}</div>
+
         <div class="flex items-center gap-2">
-          <button data-id="${id}" class="view-user btn p-2 rounded bg-indigo-50 text-indigo-700" title="View"><i data-feather="eye"></i></button>
+          <!-- VIEW -->
+          <button data-id="${id}" class="view-user btn p-2 rounded bg-indigo-50 text-indigo-700" title="View">
+            <i data-feather="eye"></i>
+          </button>
+
+          <!-- DELETE -->
+          <button data-id="${id}" class="delete-user btn p-2 rounded bg-red-50 text-red-700" title="Delete User">
+            <i data-feather="trash-2"></i>
+          </button>
         </div>
       </div>
     </div>
   `;
 }
+
 
 async function renderMyBusiness() {
   mybusCards.innerHTML = '<div class="panel p-4">Loading businesses...</div>';
@@ -499,27 +545,65 @@ async function renderFinal() {
     console.error(err);
   }
 }
-function finalCardHtml(id, d){
-  const imgHtml = d.imageUrl ? `<img src="${escapeHtml(d.imageUrl)}" class="card-img" onclick="window.open('${escapeHtml(d.imageUrl)}','_blank')" />` : `<div class="p-4 small-muted">No image</div>`;
+function finalCardHtml(id, d, pdfLink){
+  const imgHtml = d.imageUrl
+    ? `<img src="${escapeHtml(d.imageUrl)}" class="card-img" onclick="window.open('${escapeHtml(d.imageUrl)}','_blank')" />`
+    : `<div class="p-4 small-muted">No image</div>`;
+
   return `
     <div class="panel p-3">
-      <div class="h-40 mb-3 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">${imgHtml}</div>
+      <div class="h-40 mb-3 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+        ${imgHtml}
+      </div>
+
       <div class="mb-2">
         <div class="font-semibold">${escapeHtml(d.companyname||'—')}</div>
-        <div class="small-muted text-sm">${escapeHtml(d.city||'—')} · ${escapeHtml(d.businessType||'—')}</div>
+        <div class="small-muted text-sm">
+          ${escapeHtml(d.city||'—')} · ${escapeHtml(d.businessType||'—')}
+        </div>
       </div>
-      <div class="mb-3 small-muted text-sm">${escapeHtml(d.companyphone||'—')}</div>
+
+      <div class="mb-3 small-muted text-sm">
+        ${escapeHtml(d.companyphone||'—')}
+      </div>
+
       <div class="flex items-center justify-between">
-        <div class="small-muted text-sm">Owner: ${escapeHtml(d.ownername||'—')}</div>
+        <div class="small-muted text-sm">
+          Owner: ${escapeHtml(d.ownername||'—')}
+        </div>
+
         <div class="flex items-center gap-2">
-          <button data-id="${id}" class="view-final btn p-2 rounded bg-indigo-50 text-indigo-700" title="View"><i data-feather="eye"></i></button>
-          <button data-id="${id}" class="revert-final btn p-2 rounded bg-yellow-50 text-yellow-700" title="Revert"><i data-feather="rotate-ccw"></i></button>
-          <button data-id="${id}" class="delete-final btn p-2 rounded bg-red-50 text-red-700" title="Delete"><i data-feather="trash-2"></i></button>
+          <!-- PDF -->
+          ${
+            pdfLink
+              ? `<button data-pdf="${escapeHtml(pdfLink)}"
+                    class="open-pdf btn p-2 rounded bg-indigo-50 text-indigo-700"
+                    title="Open PDF">
+                    <i data-feather="file-text"></i>
+                 </button>`
+              : ''
+          }
+
+          <!-- VIEW -->
+          <button data-id="${id}" class="view-final btn p-2 rounded bg-indigo-50 text-indigo-700" title="View">
+            <i data-feather="eye"></i>
+          </button>
+
+          <!-- REVERT -->
+          <button data-id="${id}" class="revert-final btn p-2 rounded bg-yellow-50 text-yellow-700" title="Revert">
+            <i data-feather="rotate-ccw"></i>
+          </button>
+
+          <!-- DELETE -->
+          <button data-id="${id}" class="delete-final btn p-2 rounded bg-red-50 text-red-700" title="Delete">
+            <i data-feather="trash-2"></i>
+          </button>
         </div>
       </div>
     </div>
   `;
 }
+
 
 /* ---------------------------
    Feeds: new tab
@@ -533,11 +617,13 @@ async function renderFeeds() {
     feedsCards.innerHTML = '';
     let count = 0;
     for (const snap of q.docs) {
-      const d = snap.data();
-      console.log('renderFeeds: doc', snap.id, d);
-      count++;
-      feedsCards.innerHTML += feedCardHtml(snap.id, d);
-    }
+  const d = snap.data(); 
+  count++;
+
+  const pdf = await resolvePdfUrl(d.pdfUrl || d.pdfPath || '');
+  finalCards.innerHTML += finalCardHtml(snap.id, d, pdf);
+}
+
     if (!count) feedsCards.innerHTML = '<div class="panel p-4 small-muted">No feeds yet</div>';
 
     // update count in summary card
